@@ -23,31 +23,17 @@
 
 namespace Google\Cloud\Samples\Spanner;
 
-# [START insert_data]
+# [START spanner_insert_data]
 use Google\Cloud\Spanner\SpannerClient;
 
 /**
- * Create a database in spanner
+ * Inserts sample data into the given database.
+ *
+ * The database and table must already exist and can be created using
+ * `create_database`.
  * Example:
  * ```
- * // create an empty database
  * insert_data($instanceId, $databaseId);
-*
- * // create a database with tables
- * insert_data($instanceId, $databaseId, [
- *   "CREATE TABLE Singers (
- *       SingerId     INT64 NOT NULL,
- *       FirstName    STRING(1024),
- *       LastName     STRING(1024),
- *       SingerInfo   BYTES(MAX)
- *   ) PRIMARY KEY (SingerId)",
- *   "CREATE TABLE Albums (
- *       SingerId     INT64 NOT NULL,
- *       AlbumId      INT64 NOT NULL,
- *       AlbumTitle   STRING(MAX)
- *   ) PRIMARY KEY (SingerId, AlbumId),
- *   INTERLEAVE IN PARENT Singers ON DELETE CASCADE"
- * ]);
  * ```
  *
  * @param string $instanceId The Spanner instance ID.
@@ -57,19 +43,25 @@ function insert_data($instanceId, $databaseId)
 {
     $spanner = new SpannerClient();
     $instance = $spanner->instance($instanceId);
+    $database = $instance->database($databaseId);
 
-    if (!$instance->exists()) {
-        throw new \LogicException("Instance $instanceId does not exist");
-    }
+    $operation = $database->transaction(['singleUse' => true])
+        ->insertBatch('Singers', [
+            ['SingerId' => 1, 'FirstName' => 'Marc', 'LastName' => 'Richards'],
+            ['SingerId' => 2, 'FirstName' => 'Catalina', 'LastName' => 'Smith'],
+            ['SingerId' => 3, 'FirstName' => 'Alice', 'LastName' => 'Trentor'],
+            ['SingerId' => 4, 'FirstName' => 'Lea', 'LastName' => 'Martin'],
+            ['SingerId' => 5, 'FirstName' => 'David', 'LastName' => 'Lomond'],
+        ])
+        ->insertBatch('Albums', [
+            ['SingerId' => 1, 'AlbumId' => 1, 'AlbumTitle' => 'Go, Go, Go'],
+            ['SingerId' => 1, 'AlbumId' => 2, 'AlbumTitle' => 'Total Junk'],
+            ['SingerId' => 2, 'AlbumId' => 1, 'AlbumTitle' => 'Green'],
+            ['SingerId' => 2, 'AlbumId' => 2, 'AlbumTitle' => 'Forever Hold Your Peace'],
+            ['SingerId' => 2, 'AlbumId' => 3, 'AlbumTitle' => 'Terrified']
+        ])
+        ->commit();
 
-    $operation = $instance->createDatabase($databaseId, [
-        'statements' => $statements
-    ]);
-
-    print('Waiting for operation to complete...' . PHP_EOL);
-    $operation->pollUntilComplete();
-
-    printf('Created database %s on instance %s' . PHP_EOL,
-        $databaseId, $instanceId);
+    print('Inserted data.' . PHP_EOL);
 }
-# [END insert_data]
+# [END spanner_insert_data]

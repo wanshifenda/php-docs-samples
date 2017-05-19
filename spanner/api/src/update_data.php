@@ -23,47 +23,39 @@
 
 namespace Google\Cloud\Samples\Spanner;
 
-# [START spanner_create_database]
+# [START spanner_update_data]
 use Google\Cloud\Spanner\SpannerClient;
 
 /**
- * Creates a database and tables for sample data.
+ * Updates sample data in the database.
+ *
+ * This updates the `MarketingBudget` column which must be created before
+ * running this sample. You can add the column by running the `add_column`
+ * sample or by running this DDL statement against your database:
+ *
+ *     ALTER TABLE Albums ADD COLUMN MarketingBudget INT64
+ *
  * Example:
  * ```
- * create_database($instanceId, $databaseId);
+ * update_data($instanceId, $databaseId);
  * ```
  *
  * @param string $instanceId The Spanner instance ID.
  * @param string $databaseId The Spanner database ID.
  */
-function create_database($instanceId, $databaseId)
+function update_data($instanceId, $databaseId)
 {
     $spanner = new SpannerClient();
     $instance = $spanner->instance($instanceId);
+    $database = $instance->database($databaseId);
 
-    if (!$instance->exists()) {
-        throw new \LogicException("Instance $instanceId does not exist");
-    }
+    $operation = $database->transaction(['singleUse' => true])
+        ->updateBatch('Albums', [
+            ['SingerId' => 1, 'AlbumId' => 1, 'MarketingBudget' => 100000],
+            ['SingerId' => 2, 'AlbumId' => 2, 'MarketingBudget' => 500000],
+        ])
+        ->commit();
 
-    $operation = $instance->createDatabase($databaseId, ['statements' => [
-        "CREATE TABLE Singers (
-            SingerId     INT64 NOT NULL,
-            FirstName    STRING(1024),
-            LastName     STRING(1024),
-            SingerInfo   BYTES(MAX)
-        ) PRIMARY KEY (SingerId)",
-        "CREATE TABLE Albums (
-            SingerId     INT64 NOT NULL,
-            AlbumId      INT64 NOT NULL,
-            AlbumTitle   STRING(MAX)
-        ) PRIMARY KEY (SingerId, AlbumId),
-        INTERLEAVE IN PARENT Singers ON DELETE CASCADE"
-    ]]);
-
-    print('Waiting for operation to complete...' . PHP_EOL);
-    $operation->result();
-
-    printf('Created database %s on instance %s' . PHP_EOL,
-        $databaseId, $instanceId);
+    print('Updated data.' . PHP_EOL);
 }
-# [END spanner_create_database]
+# [END spanner_update_data]

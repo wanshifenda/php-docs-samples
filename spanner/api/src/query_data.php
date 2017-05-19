@@ -23,47 +23,32 @@
 
 namespace Google\Cloud\Samples\Spanner;
 
-# [START spanner_create_database]
+# [START spanner_query_data]
 use Google\Cloud\Spanner\SpannerClient;
 
 /**
- * Creates a database and tables for sample data.
+ * Queries sample data from the database using SQL.
  * Example:
  * ```
- * create_database($instanceId, $databaseId);
+ * query_data($instanceId, $databaseId);
  * ```
  *
  * @param string $instanceId The Spanner instance ID.
  * @param string $databaseId The Spanner database ID.
  */
-function create_database($instanceId, $databaseId)
+function query_data($instanceId, $databaseId)
 {
     $spanner = new SpannerClient();
     $instance = $spanner->instance($instanceId);
+    $database = $instance->database($databaseId);
 
-    if (!$instance->exists()) {
-        throw new \LogicException("Instance $instanceId does not exist");
+    $results = $database->execute(
+        'SELECT SingerId, AlbumId, AlbumTitle FROM Albums'
+    );
+
+    foreach ($results as $row) {
+        printf('SingerId: %s, AlbumId: %s, AlbumTitle: %s' . PHP_EOL,
+            $row['SingerId'], $row['AlbumId'], $row['AlbumTitle']);
     }
-
-    $operation = $instance->createDatabase($databaseId, ['statements' => [
-        "CREATE TABLE Singers (
-            SingerId     INT64 NOT NULL,
-            FirstName    STRING(1024),
-            LastName     STRING(1024),
-            SingerInfo   BYTES(MAX)
-        ) PRIMARY KEY (SingerId)",
-        "CREATE TABLE Albums (
-            SingerId     INT64 NOT NULL,
-            AlbumId      INT64 NOT NULL,
-            AlbumTitle   STRING(MAX)
-        ) PRIMARY KEY (SingerId, AlbumId),
-        INTERLEAVE IN PARENT Singers ON DELETE CASCADE"
-    ]]);
-
-    print('Waiting for operation to complete...' . PHP_EOL);
-    $operation->result();
-
-    printf('Created database %s on instance %s' . PHP_EOL,
-        $databaseId, $instanceId);
 }
-# [END spanner_create_database]
+# [END spanner_query_data]

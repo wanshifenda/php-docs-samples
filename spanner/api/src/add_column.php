@@ -23,47 +23,32 @@
 
 namespace Google\Cloud\Samples\Spanner;
 
-# [START spanner_create_database]
+# [START spanner_add_column]
 use Google\Cloud\Spanner\SpannerClient;
 
 /**
- * Creates a database and tables for sample data.
+ * Adds a new column to the Albums table in the example database.
  * Example:
  * ```
- * create_database($instanceId, $databaseId);
+ * add_column($instanceId, $databaseId);
  * ```
  *
  * @param string $instanceId The Spanner instance ID.
  * @param string $databaseId The Spanner database ID.
  */
-function create_database($instanceId, $databaseId)
+function add_column($instanceId, $databaseId)
 {
     $spanner = new SpannerClient();
     $instance = $spanner->instance($instanceId);
+    $database = $instance->database($databaseId);
 
-    if (!$instance->exists()) {
-        throw new \LogicException("Instance $instanceId does not exist");
-    }
-
-    $operation = $instance->createDatabase($databaseId, ['statements' => [
-        "CREATE TABLE Singers (
-            SingerId     INT64 NOT NULL,
-            FirstName    STRING(1024),
-            LastName     STRING(1024),
-            SingerInfo   BYTES(MAX)
-        ) PRIMARY KEY (SingerId)",
-        "CREATE TABLE Albums (
-            SingerId     INT64 NOT NULL,
-            AlbumId      INT64 NOT NULL,
-            AlbumTitle   STRING(MAX)
-        ) PRIMARY KEY (SingerId, AlbumId),
-        INTERLEAVE IN PARENT Singers ON DELETE CASCADE"
-    ]]);
+    $operation = $database->updateDdl(
+        'ALTER TABLE Albums ADD COLUMN MarketingBudget INT64'
+    );
 
     print('Waiting for operation to complete...' . PHP_EOL);
     $operation->result();
 
-    printf('Created database %s on instance %s' . PHP_EOL,
-        $databaseId, $instanceId);
+    printf('Added the MarketingBudget column.' . PHP_EOL);
 }
-# [END spanner_create_database]
+# [END spanner_add_column]

@@ -23,47 +23,41 @@
 
 namespace Google\Cloud\Samples\Spanner;
 
-# [START spanner_create_database]
+# [START spanner_create_storing_index]
 use Google\Cloud\Spanner\SpannerClient;
 
 /**
- * Creates a database and tables for sample data.
+ * Adds an storing index to the example database.
+ *
+ * This sample uses the `MarketingBudget` column. You can add the column
+ * by running the `add_column` sample or by running this DDL statement against
+ * your database:
+ *
+ *     ALTER TABLE Albums ADD COLUMN MarketingBudget INT64
+ *
  * Example:
  * ```
- * create_database($instanceId, $databaseId);
+ * // create an empty database
+ * create_storing_index($instanceId, $databaseId);
  * ```
  *
  * @param string $instanceId The Spanner instance ID.
  * @param string $databaseId The Spanner database ID.
  */
-function create_database($instanceId, $databaseId)
+function create_storing_index($instanceId, $databaseId)
 {
     $spanner = new SpannerClient();
     $instance = $spanner->instance($instanceId);
+    $database = $instance->database($databaseId);
 
-    if (!$instance->exists()) {
-        throw new \LogicException("Instance $instanceId does not exist");
-    }
-
-    $operation = $instance->createDatabase($databaseId, ['statements' => [
-        "CREATE TABLE Singers (
-            SingerId     INT64 NOT NULL,
-            FirstName    STRING(1024),
-            LastName     STRING(1024),
-            SingerInfo   BYTES(MAX)
-        ) PRIMARY KEY (SingerId)",
-        "CREATE TABLE Albums (
-            SingerId     INT64 NOT NULL,
-            AlbumId      INT64 NOT NULL,
-            AlbumTitle   STRING(MAX)
-        ) PRIMARY KEY (SingerId, AlbumId),
-        INTERLEAVE IN PARENT Singers ON DELETE CASCADE"
-    ]]);
+    $operation = $database->updateDdl(
+        'CREATE INDEX AlbumsByAlbumTitle2 ON Albums(AlbumTitle) ' .
+        'STORING (MarketingBudget)'
+    );
 
     print('Waiting for operation to complete...' . PHP_EOL);
     $operation->result();
 
-    printf('Created database %s on instance %s' . PHP_EOL,
-        $databaseId, $instanceId);
+    printf('Added the AlbumsByAlbumTitle2 index.' . PHP_EOL);
 }
-# [END spanner_create_database]
+# [END spanner_create_storing_index]
